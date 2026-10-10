@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Art Plotter</title>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <header>
+          <h1>Art Plotter</h1>
+          <p>Generative lines → Marlin G-code</p>
+        </header>
+        <div id="controls"></div>
+
+        <section class="panel">
+          <h2>Export</h2>
+          <div class="buttons">
+            <button id="export-pen" class="primary">Pen G-code</button>
+            <button id="export-brush" class="primary">Brush G-code</button>
+            <button id="export-svg">SVG</button>
+            <button id="export-boundary" title="Traces the margin rectangle with the tool raised">Boundary check</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <details>
+            <summary>Custom G-code</summary>
+            <label>Start (after G21/G90/G92)<textarea id="start-gcode" rows="3" spellcheck="false"></textarea></label>
+            <label>End (before M400)<textarea id="end-gcode" rows="3" spellcheck="false"></textarea></label>
+          </details>
+        </section>
+
+        <section class="panel">
+          <h2>Presets</h2>
+          <div class="buttons">
+            <button id="save-preset">Save…</button>
+            <button id="load-preset">Load…</button>
+            <button id="reset-all">Reset all</button>
+          </div>
+          <input id="preset-file" type="file" accept="application/json,.json" hidden />
+        </section>
+
+        <section class="panel help">
+          <details>
+            <summary>How to run a plot</summary>
+            <ol>
+              <li>Fix the substrate to the bed (a corner jig helps the brush pass line up).</li>
+              <li>Optional: run <em>Boundary check</em> to confirm placement.</li>
+              <li>Jog the pen tip to just touch the artwork’s bottom-left corner (pink dot). Every file zeroes there with <code>G92</code>.</li>
+              <li>Run the pen G-code.</li>
+              <li>Spread paint, swap in the brush, re-zero Z on the same corner (don’t move X/Y), and run the brush G-code.</li>
+            </ol>
+          </details>
+        </section>
+      </aside>
+
+      <main class="stage">
+        <canvas id="preview"></canvas>
+        <div class="statusbar">
+          <div id="stats"></div>
+          <div id="warnings"></div>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

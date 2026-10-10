@@ -1,0 +1,23 @@
+{
+  "name": "art-plotter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generative line art to Marlin G-code for a pen/brush plotter (MPCNC).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "simplex-noise": "^4.0.3",
+    "tweakpane": "^4.0.5"
+  },
+  "devDependencies": {
+    "@tweakpane/core": "^2.0.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
+  }
+}
