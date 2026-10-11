@@ -59,13 +59,22 @@ patternFolder
   })
   .on('change', () => buildGeneratorUI());
 patternFolder.addButton({ title: 'Random seed' }).on('click', () => {
-  const params = currentParams();
-  if ('seed' in params) {
-    params.seed = randomSeed();
+  const holder = seedHolder(currentParams());
+  if (holder) {
+    holder.seed = randomSeed();
     pane.refresh();
   }
 });
 let generatorFolder: FolderApi | null = null;
+
+/** The params object holding `seed`: top level, or one level down (e.g. `terrain.seed`). */
+function seedHolder(params: Record<string, unknown>): { seed: number } | null {
+  if (typeof params.seed === 'number') return params as { seed: number };
+  for (const v of Object.values(params)) {
+    if (v && typeof v === 'object' && typeof (v as { seed?: unknown }).seed === 'number') return v as { seed: number };
+  }
+  return null;
+}
 
 function currentParams(): Record<string, unknown> {
   const gen = getGenerator(state.generatorId);
@@ -194,7 +203,7 @@ function download(filename: string, content: string, type: string) {
 }
 
 function baseName(): string {
-  const seed = currentParams().seed;
+  const seed = seedHolder(currentParams())?.seed;
   return `${state.generatorId}${seed !== undefined ? `-${seed}` : ''}`;
 }
 

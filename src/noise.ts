@@ -18,20 +18,31 @@ export function randomSeed(): number {
 
 /**
  * Fractal (multi-octave) simplex noise. Output is roughly in [-1, 1].
- * Each octave doubles the frequency and halves the amplitude.
+ * Each octave doubles the frequency and multiplies the amplitude by `gain`.
+ * `ridged` folds each octave into sharp crests (mountain ridges) instead of soft hills.
  */
-export function createFbm3D(seed: number, octaves: number): (x: number, y: number, z: number) => number {
+export function createFbm3D(
+  seed: number,
+  octaves: number,
+  gain = 0.5,
+  ridged = false,
+): (x: number, y: number, z: number) => number {
   const noise: NoiseFunction3D = createNoise3D(mulberry32(seed));
   const n = Math.max(1, Math.round(octaves));
   let norm = 0;
-  for (let i = 0, amp = 1; i < n; i++, amp *= 0.5) norm += amp;
+  for (let i = 0, amp = 1; i < n; i++, amp *= gain) norm += amp;
   return (x, y, z) => {
     let sum = 0;
     let amp = 1;
     let freq = 1;
     for (let i = 0; i < n; i++) {
-      sum += amp * noise(x * freq, y * freq, z * freq);
-      amp *= 0.5;
+      let v = noise(x * freq, y * freq, z * freq);
+      if (ridged) {
+        const r = 1 - Math.abs(v);
+        v = 2 * r * r - 1;
+      }
+      sum += amp * v;
+      amp *= gain;
       freq *= 2;
     }
     return sum / norm;

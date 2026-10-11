@@ -42,11 +42,11 @@ Generator → polylines (mm)
 
 ## Phases
 
-1. **Foundation and concentric rings.** Project setup, Pages deploy, preview, post-processing
+1. ✅ **Foundation and concentric rings.** Project setup, Pages deploy, preview, post-processing
    pipeline, Marlin export with pen and brush profiles, presets (JSON + localStorage), seeded randomness.
    Generator: noisy concentric rings with a minimum gap, so lines bunch up but never cross.
    → *Run a small test plot on paper.*
-2. **Topographic contours.** A noise heightfield (octaves, ridging) traced into contour lines with
+2. ✅ **Topographic contours.** A noise heightfield (octaves, ridging) traced into contour lines with
    marching squares, with the segments joined into continuous lines.
 3. **Ridgelines.** Stacked lines displaced by height, with hidden-line removal and
    perspective/tilt.
