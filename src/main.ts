@@ -86,6 +86,18 @@ function buildGeneratorUI() {
   generatorFolder?.dispose();
   const gen = getGenerator(state.generatorId);
   generatorFolder = patternFolder.addFolder({ title: gen.name });
+  for (const [name, make] of Object.entries(gen.presets ?? {})) {
+    generatorFolder.addButton({ title: name, label: 'style' }).on('click', () => {
+      // Keep the current seed so a style change reshapes the same terrain.
+      const seed = seedHolder(currentParams())?.seed;
+      const next = make();
+      const holder = seedHolder(next);
+      if (holder && seed !== undefined) holder.seed = seed;
+      state.params[gen.id] = next;
+      buildGeneratorUI();
+      scheduleUpdate();
+    });
+  }
   gen.bindUI(generatorFolder, currentParams());
   generatorFolder.addButton({ title: 'Reset pattern' }).on('click', () => {
     state.params[gen.id] = gen.defaults();

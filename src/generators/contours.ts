@@ -24,6 +24,20 @@ export const contoursGenerator: Generator<ContoursParams> = {
     smoothing: 2,
   }),
 
+  presets: {
+    'Rolling terrain': () => contoursGenerator.defaults(),
+    'Mountain island': () => ({
+      ...contoursGenerator.defaults(),
+      terrain: { ...terrainDefaults(), scale: 350, warp: 0.35, island: 0.85, ridged: 0.35, gamma: 1.3 },
+      levels: 45,
+    }),
+    'Swirl': () => ({
+      ...contoursGenerator.defaults(),
+      terrain: { ...terrainDefaults(), scale: 500, octaves: 2, warp: 1.6 },
+      levels: 60,
+    }),
+  },
+
   bindUI(f, p) {
     f.addBinding(p, 'levels', { min: 1, max: 300, step: 1 });
     f.addBinding(p, 'cellSize', { label: 'grid mm', min: 0.5, max: 10, step: 0.1 });

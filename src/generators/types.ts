@@ -9,6 +9,8 @@ export interface Generator<P extends object = any> {
   id: string;
   name: string;
   defaults(): P;
+  /** Named starting points, shown as one-click style buttons. */
+  presets?: Record<string, () => P>;
   /** Adds this generator's controls to a Tweakpane folder, bound to `params`. */
   bindUI(folder: FolderApi, params: P): void;
   generate(params: P, canvas: CanvasSettings): Polyline[];

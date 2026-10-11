@@ -48,7 +48,7 @@ Generator → polylines (mm)
    → *Run a small test plot on paper.*
 2. ✅ **Topographic contours.** A noise heightfield (octaves, ridging) traced into contour lines with
    marching squares, with the segments joined into continuous lines.
-3. **Ridgelines.** Stacked lines displaced by height, with hidden-line removal and
+3. ✅ **Ridgelines.** Stacked lines displaced by height, with hidden-line removal and
    perspective/tilt.
 4. **Image/heightmap input.** Upload a grayscale image or elevation PNG and use it as the
    terrain for phases 2 and 3.
