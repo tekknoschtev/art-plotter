@@ -110,6 +110,7 @@ buildGeneratorUI();
 const processFolder = pane.addFolder({ title: 'Processing', expanded: false });
 processFolder.addBinding(state.process, 'simplify', { label: 'simplify mm', min: 0, max: 2, step: 0.01 });
 processFolder.addBinding(state.process, 'minLength', { label: 'min length mm', min: 0, max: 20, step: 0.1 });
+processFolder.addBinding(state.process, 'staggerSeams', { label: 'stagger seams' });
 processFolder.addBinding(state, 'showTravel', { label: 'show travel' });
 
 function bindProfile(title: string, profile: ToolProfile) {

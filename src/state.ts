@@ -28,7 +28,7 @@ export function defaultState(): AppState {
     bed: { width: 609.6, height: 1219.2 },
     generatorId: generators[0].id,
     params: Object.fromEntries(generators.map((g) => [g.id, g.defaults()])),
-    process: { simplify: 0.1, minLength: 0.5 },
+    process: { simplify: 0.1, minLength: 0.5, staggerSeams: true },
     pen: { drawZ: -0.5, travelZ: 4, drawFeed: 1800, travelFeed: 3000, zFeed: 300, dwellMs: 0, reverse: false },
     brush: { drawZ: -1.5, travelZ: 8, drawFeed: 1200, travelFeed: 3000, zFeed: 300, dwellMs: 150, reverse: false },
     startGcode: '',
