@@ -8,6 +8,8 @@ import { toSvg } from './output/svg';
 import { clearState, defaultState, loadState, parseState, saveState } from './state';
 import { drawableRect, type Polyline } from './types';
 import { randomSeed } from './noise';
+import { terrainMissingImage, type TerrainParams } from './terrain/terrain';
+import { onImageChange, restoreImage } from './terrain/imageSource';
 
 const MM_PER_IN = 25.4;
 const SIZE_PRESETS: Record<string, [number, number]> = {
@@ -88,11 +90,18 @@ function buildGeneratorUI() {
   generatorFolder = patternFolder.addFolder({ title: gen.name });
   for (const [name, make] of Object.entries(gen.presets ?? {})) {
     generatorFolder.addButton({ title: name, label: 'style' }).on('click', () => {
-      // Keep the current seed so a style change reshapes the same terrain.
-      const seed = seedHolder(currentParams())?.seed;
-      const next = make();
+      // Keep the current seed (and image source) so a style change reshapes the same terrain.
+      const prev = currentParams();
+      const seed = seedHolder(prev)?.seed;
+      const next = make() as Record<string, unknown>;
       const holder = seedHolder(next);
       if (holder && seed !== undefined) holder.seed = seed;
+      const prevTerrain = prev.terrain as TerrainParams | undefined;
+      const nextTerrain = next.terrain as TerrainParams | undefined;
+      if (prevTerrain && nextTerrain) {
+        nextTerrain.source = prevTerrain.source;
+        nextTerrain.image = { ...prevTerrain.image };
+      }
       state.params[gen.id] = next;
       buildGeneratorUI();
       scheduleUpdate();
@@ -199,6 +208,8 @@ function updateStats(ms: number) {
   }
   if (points > 200_000) warnings.push('Very high point count — raise “simplify” or “sample mm” for smoother Marlin motion.');
   if (state.pen.drawZ >= 0) warnings.push('Pen draw Z is ≥ 0; the pen may not touch the surface.');
+  const terrain = currentParams().terrain as TerrainParams | undefined;
+  if (terrain && terrainMissingImage(terrain)) warnings.push('Terrain source is Image — use “Load image…” in the Terrain → Image panel.');
   $('warnings').innerHTML = warnings.map((w) => `<div>${w}</div>`).join('');
 }
 
@@ -265,4 +276,6 @@ $('reset-all').addEventListener('click', () => {
   location.reload();
 });
 
+onImageChange(() => scheduleUpdate());
 update();
+void restoreImage();

@@ -3,7 +3,7 @@ import type { Polyline } from '../types';
 import { drawableRect } from '../types';
 import { removeHiddenLines } from '../geometry/horizon';
 import { sampleHeight } from '../terrain/heightfield';
-import { bindTerrainUI, buildNoiseTerrain, terrainDefaults, type TerrainParams } from '../terrain/noiseTerrain';
+import { bindTerrainUI, buildTerrain, terrainDefaults, type TerrainParams } from '../terrain/terrain';
 
 export interface RidgelinesParams {
   terrain: TerrainParams;
@@ -97,7 +97,7 @@ export const ridgelinesGenerator: Generator<RidgelinesParams> = {
     const backScale = scaleAt(1);
 
     const worldW = p.fillWidth ? drawW / backScale : drawW;
-    const field = buildNoiseTerrain(p.terrain, worldW, p.depth, p.cellSize);
+    const field = buildTerrain(p.terrain, worldW, p.depth, p.cellSize);
 
     // Front row sits on the bottom margin; the back row leaves room for its peaks.
     const yFront = rect.y0;

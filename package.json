@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "fast-png": "^8.0.0",
     "simplex-noise": "^4.0.3",
     "tweakpane": "^4.0.5"
   },

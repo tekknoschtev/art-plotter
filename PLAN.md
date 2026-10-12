@@ -50,7 +50,7 @@ Generator → polylines (mm)
    marching squares, with the segments joined into continuous lines.
 3. ✅ **Ridgelines.** Stacked lines displaced by height, with hidden-line removal and
    perspective/tilt.
-4. **Image/heightmap input.** Upload a grayscale image or elevation PNG and use it as the
+4. ✅ **Image/heightmap input.** Upload a grayscale image or elevation PNG and use it as the
    terrain for phases 2 and 3.
 5. **Later.** Paint-well dipping, multiple layers or colours, combining patterns (masks),
    inch units, and possibly sending G-code to the machine from the browser over USB (Web Serial).

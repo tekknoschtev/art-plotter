@@ -1,7 +1,7 @@
 import type { Generator } from './types';
 import { traceContours } from '../geometry/contours';
 import { chaikin } from '../geometry/smooth';
-import { bindTerrainUI, buildNoiseTerrain, terrainDefaults, type TerrainParams } from '../terrain/noiseTerrain';
+import { bindTerrainUI, buildTerrain, terrainDefaults, type TerrainParams } from '../terrain/terrain';
 
 export interface ContoursParams {
   terrain: TerrainParams;
@@ -46,7 +46,7 @@ export const contoursGenerator: Generator<ContoursParams> = {
   },
 
   generate(p, canvas) {
-    const field = buildNoiseTerrain(p.terrain, canvas.width, canvas.height, p.cellSize);
+    const field = buildTerrain(p.terrain, canvas.width, canvas.height, p.cellSize);
     const smoothing = Math.round(p.smoothing);
     return traceContours(field, p.levels).map((line) => chaikin(line, smoothing));
   },
