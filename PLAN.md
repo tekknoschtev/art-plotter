@@ -52,8 +52,19 @@ Generator → polylines (mm)
    perspective/tilt.
 4. ✅ **Image/heightmap input.** Upload a grayscale image or elevation PNG and use it as the
    terrain for phases 2 and 3.
-5. **Later.** Paint-well dipping, multiple layers or colours, combining patterns (masks),
-   inch units, and possibly sending G-code to the machine from the browser over USB (Web Serial).
+5. ✅ **Procedural city (blocks style).** Random city maps drawn as blocks: rounded, inset outlines where
+   the streets are the gaps between them (good cells for painting). Single pen weight; road hierarchy
+   shows as gap width.
+   - Road network: a blended direction field (grid districts, radial plazas, noise bend, and a river
+     that pulls the grid parallel to its banks) traced into evenly spaced streets, with
+     major, main and minor classes. Dangling ends get joined.
+   - Blocks: thicken roads, river, railway and plazas into strips with Clipper2, subtract them from the
+     canvas, round the corners (shrink, then grow back), drop tiny fragments, and add optional inner outlines.
+   - Features: river with bridges, plazas/étoiles, parks with paths, railway.
+   - Output: blocks, plain streets, or both.
+6. **Later.** Paint-well dipping, multiple layers or colours, combining patterns (masks), real map data
+   (OpenStreetMap), flight-line overlays, city-edge fade, inch units, and possibly sending G-code to the
+   machine from the browser over USB (Web Serial).
 
 ## Notes
 - Marlin stutters on thousands of tiny moves, especially over USB. Simplify to about 0.1–0.2 mm

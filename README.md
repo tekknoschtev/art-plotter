@@ -39,11 +39,26 @@ Brightness becomes height. The last image you loaded is kept in your browser; it
 - **Fit** picks how the image maps onto the artwork (for ridgelines, the top of the image is the back row).
   **Black/white point** adjusts contrast, **invert** flips height, and **noise mix** adds procedural texture.
 
+## City maps
+
+**City map** generates an imaginary city drawn as blocks: rounded outlines where the streets are the
+gaps between them, which makes good cells for painting. Road hierarchy shows as gap width (major, main
+and minor). Start from a **style** (Riverside, Old town, Planned grid, Étoiles), then adjust:
+
+- **Streets:** spacing for each road class, number of differently angled grid **districts**, and how
+  **organic** (bent) the streets are.
+- **Blocks:** gap per road class, **corner radius**, minimum block size, and how many blocks get an
+  inner second outline.
+- **River** (streets run parallel near its banks; major roads cross on bridges), **Plazas** (avenues
+  radiate from them), **Parks** (with footpaths), and **Railway**.
+- **Output:** *Blocks*, plain *Streets* (centrelines), or *Both*.
+
 ## Code layout
 
 - `src/generators/`: pattern generators, which output polylines in mm (origin bottom-left, Y up)
 - `src/geometry/`: clipping, simplification, path ordering, contours, hidden-line removal
 - `src/terrain/`: height fields from noise or images
+- `src/city/`: street-direction field, street tracing, features, block geometry (Clipper2)
 - `src/pipeline.ts`: generator output → plot-ready paths
 - `src/output/`: G-code and SVG writers
 - `src/main.ts`: UI wiring (Tweakpane)
