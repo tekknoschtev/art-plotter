@@ -60,13 +60,14 @@ export interface BlockOptions {
 }
 
 /**
- * The city blocks: everything inside `region` not covered by `cuts`, with
- * convex corners rounded. Returns Clipper paths (outer contours and holes).
+ * The city blocks: everything inside `region` (a rectangle, or polygons such
+ * as an organic city outline) not covered by `cuts`, with convex corners
+ * rounded. Returns Clipper paths (outer contours and holes).
  */
-export function buildBlocks(region: Rect, cuts: Paths64[], opts: BlockOptions): Paths64 {
-  const rect = rectPath(region);
+export function buildBlocks(region: Rect | Paths64, cuts: Paths64[], opts: BlockOptions): Paths64 {
+  const area = Array.isArray(region) ? region : [rectPath(region)];
   const allCuts = union(cuts.flat(), FillRule.NonZero);
-  let blocks = difference([rect], allCuts, FillRule.NonZero);
+  let blocks = difference(area, allCuts, FillRule.NonZero);
   if (opts.cornerRadius > 0) {
     // Morphological opening: shrink then grow back rounds every convex corner.
     // Done block by block: blocks never interact, and offsetting them all at
@@ -87,6 +88,16 @@ export function insetBlock(block: Path64, inset: number): Paths64 {
 }
 
 export const area = (p: Path64) => pathArea(p) / (S * S);
+
+/** Closed loops (outer shores and lake holes) → one Clipper region. */
+export function loopsToRegion(loops: Polyline[]): Paths64 {
+  return union(toPaths(loops.map((l) => l.slice(0, -1))), FillRule.EvenOdd);
+}
+
+/** Grows (positive) or shrinks (negative) polygons by `delta` mm with round corners. */
+export function grow(paths: Paths64, delta: number): Paths64 {
+  return offset(paths, delta, EndType.Polygon);
+}
 
 export function intersect(a: Paths64, b: Paths64): Paths64 {
   return clipIntersect(a, b, FillRule.NonZero);

@@ -6,9 +6,15 @@ export type ImageFit = 'cover' | 'contain' | 'stretch';
 /**
  * Returns a height lookup (x, y in mm, y up) that maps the image onto a
  * width × height mm area. The top of the image is the high-y edge (the back
- * row for ridgelines). Areas the image doesn't cover ('contain') are height 0.
+ * row for ridgelines). Areas the image doesn't cover ('contain') return `outside`.
  */
-export function imageSampler(img: ImageHeights, width: number, height: number, fit: ImageFit): (x: number, y: number) => number {
+export function imageSampler(
+  img: ImageHeights,
+  width: number,
+  height: number,
+  fit: ImageFit,
+  outside = 0,
+): (x: number, y: number) => number {
   const { width: iw, height: ih, data } = img;
   let toPx: (x: number, y: number) => [number, number];
   if (fit === 'stretch') {
@@ -20,7 +26,7 @@ export function imageSampler(img: ImageHeights, width: number, height: number, f
   }
   return (x, y) => {
     const [px, py] = toPx(x, y);
-    if (px < 0 || py < 0 || px > iw || py > ih) return 0;
+    if (px < 0 || py < 0 || px > iw || py > ih) return outside;
     // Bilinear between pixel centres.
     const fx = Math.min(iw - 1, Math.max(0, px - 0.5));
     const fy = Math.min(ih - 1, Math.max(0, py - 0.5));

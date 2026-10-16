@@ -1,12 +1,37 @@
 import type { Generator } from './types';
 import type { Polyline } from '../types';
 import { drawableRect } from '../types';
-import { mulberry32 } from '../noise';
+import { createFbm3D, mulberry32 } from '../noise';
 import { layoutCity, type CitySettings } from '../city/city';
-import { area, buildBlocks, circle, insetBlock, intersect, rectPath, strokeLines, strokeLoops, toPolyline } from '../city/blocks';
-import type { Paths64 } from 'clipper2-ts';
+import {
+  area,
+  buildBlocks,
+  circle,
+  grow,
+  insetBlock,
+  intersect,
+  loopsToRegion,
+  rectPath,
+  strokeLines,
+  strokeLoops,
+  toPolyline,
+} from '../city/blocks';
+import { buildMask, keepInside, type MaskSettings } from '../city/mask';
+import type { Path64, Paths64 } from 'clipper2-ts';
 
-export interface CityParams extends CitySettings {
+export type EdgeStyle = 'crisp' | 'ragged' | 'fade';
+
+export interface CityParams extends CitySettings, MaskSettings {
+  /** What happens to blocks at the city outline (when a shape mask is on). */
+  edgeStyle: EdgeStyle;
+  /** Fade: width of the band where blocks thin out, mm (inward from the edge). */
+  fadeWidth: number;
+  /** Fade: how much blocks shrink as they near the edge, mm. */
+  fadeShrink: number;
+  /** Draw the city outline (a coastline) around the blocks. */
+  maskOutline: boolean;
+  /** Gap between the blocks and the drawn outline, mm. */
+  outlineGap: number;
   output: 'blocks' | 'streets' | 'both';
   /** Gap left for each road class, mm. */
   majorWidth: number;
@@ -66,6 +91,21 @@ export const cityGenerator: Generator<CityParams> = {
     railAngle: 110,
     railOffset: 0.35,
     railWidth: 4,
+
+    maskShape: 'none',
+    maskSize: 0.85,
+    maskStretch: 1,
+    maskIrregularity: 0.4,
+    maskX: 0.5,
+    maskY: 0.5,
+    islandScale: 90,
+    islandLevel: 0,
+    maskInvert: false,
+    edgeStyle: 'fade',
+    fadeWidth: 40,
+    fadeShrink: 1,
+    maskOutline: false,
+    outlineGap: 2,
   }),
 
   presets: {
@@ -109,6 +149,23 @@ export const cityGenerator: Generator<CityParams> = {
       parks: 1,
       railway: true,
     }),
+    'Fading city': () => ({
+      ...cityGenerator.defaults(),
+      maskShape: 'blob',
+      maskSize: 0.8,
+      edgeStyle: 'fade',
+      fadeWidth: 45,
+    }),
+    'Island': () => ({
+      ...cityGenerator.defaults(),
+      maskShape: 'island',
+      maskSize: 0.85,
+      maskIrregularity: 0.5,
+      edgeStyle: 'crisp',
+      maskOutline: true,
+      river: false,
+      parks: 1,
+    }),
   },
 
   bindUI(f, p) {
@@ -131,6 +188,25 @@ export const cityGenerator: Generator<CityParams> = {
     blocks.addBinding(p, 'minBlockArea', { label: 'min area mm²', min: 0, max: 200, step: 1 });
     blocks.addBinding(p, 'innerChance', { label: 'inner outlines', min: 0, max: 1, step: 0.01 });
     blocks.addBinding(p, 'innerInset', { label: 'inner inset', min: 0.3, max: 5, step: 0.1 });
+
+    const shape = f.addFolder({ title: 'Shape & edge', expanded: false });
+    shape.addBinding(p, 'maskShape', {
+      label: 'shape',
+      options: { 'Full canvas': 'none', Blob: 'blob', 'Noise island': 'island', 'Image silhouette': 'image' },
+    });
+    shape.addBinding(p, 'edgeStyle', { label: 'edge', options: { Fade: 'fade', 'Ragged (whole blocks)': 'ragged', Crisp: 'crisp' } });
+    shape.addBinding(p, 'fadeWidth', { label: 'fade mm', min: 1, max: 300, step: 1 });
+    shape.addBinding(p, 'fadeShrink', { label: 'fade shrink', min: 0, max: 5, step: 0.1 });
+    shape.addBinding(p, 'maskSize', { label: 'size', min: 0.1, max: 2, step: 0.01 });
+    shape.addBinding(p, 'maskStretch', { label: 'stretch', min: 0.2, max: 5, step: 0.01 });
+    shape.addBinding(p, 'maskIrregularity', { label: 'irregularity', min: 0, max: 1.5, step: 0.01 });
+    shape.addBinding(p, 'maskX', { label: 'centre x', min: 0, max: 1, step: 0.01 });
+    shape.addBinding(p, 'maskY', { label: 'centre y', min: 0, max: 1, step: 0.01 });
+    shape.addBinding(p, 'islandScale', { label: 'coast scale', min: 10, max: 600, step: 1 });
+    shape.addBinding(p, 'islandLevel', { label: 'sea level', min: -0.5, max: 0.8, step: 0.01 });
+    shape.addBinding(p, 'maskInvert', { label: 'invert image' });
+    shape.addBinding(p, 'maskOutline', { label: 'draw outline' });
+    shape.addBinding(p, 'outlineGap', { label: 'outline gap', min: 0, max: 20, step: 0.1 });
 
     const river = f.addFolder({ title: 'River', expanded: false });
     river.addBinding(p, 'river', { label: 'enabled' });
@@ -162,15 +238,19 @@ export const cityGenerator: Generator<CityParams> = {
 
   generate(p, canvas) {
     const drawable = drawableRect(canvas);
-    const city = layoutCity(p, drawable, p.minorWidth);
+    const shape = buildMask(p, drawable, p.seed);
+    const city = layoutCity(p, drawable, p.minorWidth, shape);
     const out: Polyline[] = [];
+    // Clipper region of the city shape, clipped to the canvas.
+    const region: Paths64 = shape ? intersect(loopsToRegion(shape.outline), [rectPath(drawable)]) : [rectPath(drawable)];
 
     if (p.output !== 'blocks') {
-      out.push(...city.roads.map((r) => r.pts));
-      if (city.river) out.push(...strokeLines([city.river], p.riverWidth).map(toPolyline));
-      if (city.rail) out.push(city.rail);
-      out.push(...city.parks, ...city.parkPaths);
-      for (const pl of city.plazas) out.push(toPolyline(circle(pl.x, pl.y, p.plazaRadius)));
+      const lines: Polyline[] = city.roads.map((r) => r.pts);
+      if (city.river) lines.push(...strokeLines([city.river], p.riverWidth).map(toPolyline));
+      if (city.rail) lines.push(city.rail);
+      lines.push(...city.parks, ...city.parkPaths);
+      for (const pl of city.plazas) lines.push(toPolyline(circle(pl.x, pl.y, p.plazaRadius)));
+      out.push(...(shape ? keepInside(lines, shape) : lines));
     }
 
     if (p.output !== 'streets') {
@@ -182,7 +262,11 @@ export const cityGenerator: Generator<CityParams> = {
       cuts.push(strokeLoops(city.parks, p.minorWidth), strokeLines(city.parkPaths, p.pathWidth));
       cuts.push(city.plazas.map((pl) => circle(pl.x, pl.y, p.plazaRadius)));
 
-      const blocks = buildBlocks(drawable, cuts, { cornerRadius: p.cornerRadius, minArea: p.minBlockArea });
+      // Crisp edges cut blocks along the outline; the other styles pick whole blocks afterwards.
+      const crisp = shape !== null && p.edgeStyle === 'crisp';
+      let blocks = buildBlocks(crisp ? region : drawable, cuts, { cornerRadius: p.cornerRadius, minArea: p.minBlockArea });
+      if (shape && !crisp) blocks = selectEdgeBlocks(blocks, p, shape.distance);
+
       // Clipper returns outer contours and holes with opposite winding; the largest is an outer.
       const outerSign = Math.sign(blocks.reduce((best, b) => (Math.abs(area(b)) > Math.abs(best) ? area(b) : best), 0));
       const random = mulberry32(p.seed + 5);
@@ -197,13 +281,65 @@ export const cityGenerator: Generator<CityParams> = {
         for (const pl of city.plazas) out.push(toPolyline(circle(pl.x, pl.y, p.plazaRadius * 0.35)));
       }
       if (city.river && p.bridges) {
-        // Bridge decks: major roads where they cross the water.
+        // Bridge decks: major roads where they cross the water, only where there's city around them.
         const majors = strokeLines(city.roads.filter((r) => r.cls === 0).map((r) => r.pts), p.majorWidth * 0.8);
         const water = strokeLines([city.river], p.riverWidth + p.cornerRadius);
-        out.push(...intersect(intersect(majors, water), [rectPath(drawable)]).map(toPolyline));
+        let bridges = intersect(intersect(majors, water), region);
+        if (shape && p.edgeStyle !== 'crisp') {
+          // Keep whole bridges only, and only where the city is still solid around them.
+          const solid = p.edgeStyle === 'fade' ? p.fadeWidth / 2 : 0;
+          bridges = bridges.filter((b) => b.every((pt) => shape.distance(pt.x / 1000, pt.y / 1000) >= solid));
+        }
+        out.push(...bridges.map(toPolyline));
       }
+    }
+
+    if (shape && p.maskOutline) {
+      out.push(...intersect(grow(region, p.outlineGap), [rectPath(drawable)]).map(toPolyline));
     }
     return out;
   },
 };
 
+const centroid = (b: Path64): [number, number] => {
+  let x = 0;
+  let y = 0;
+  for (const pt of b) {
+    x += pt.x;
+    y += pt.y;
+  }
+  return [x / b.length / 1000, y / b.length / 1000];
+};
+
+/**
+ * Ragged: keep only blocks entirely inside the city shape.
+ * Fade: across a band inside the edge, blocks thin out in noisy patches (so
+ * the city dissolves in clumps rather than evenly) and shrink toward the edge.
+ */
+function selectEdgeBlocks(blocks: Paths64, p: CityParams, distance: (x: number, y: number) => number): Paths64 {
+  if (p.edgeStyle === 'ragged') {
+    return blocks.filter((b) => b.every((pt) => distance(pt.x / 1000, pt.y / 1000) >= -0.3));
+  }
+  const random = mulberry32(p.seed + 17);
+  const patches = createFbm3D(p.seed + 41, 2);
+  const out: Paths64 = [];
+  // Blocks may poke a little past the edge, but not much: outside the shape no
+  // streets are traced, so the land beyond is one huge leftover "block".
+  const overhang = p.minorSpacing / 2;
+  for (const b of blocks) {
+    const [cx, cy] = centroid(b);
+    const d = distance(cx, cy);
+    if (d <= 0) continue;
+    if (b.some((pt) => distance(pt.x / 1000, pt.y / 1000) < -overhang)) continue;
+    const t = Math.min(1, d / Math.max(1, p.fadeWidth));
+    const keep = t * t * (3 - 2 * t);
+    if (keep < 1) {
+      const patch = (patches(cx / (p.fadeWidth * 0.6), cy / (p.fadeWidth * 0.6), 0) + 1) / 2;
+      if (keep < 0.55 * patch + 0.45 * random()) continue;
+    }
+    const shrink = p.fadeShrink * (1 - keep);
+    if (shrink > 0.05) out.push(...insetBlock(b, shrink));
+    else out.push(b);
+  }
+  return out;
+}

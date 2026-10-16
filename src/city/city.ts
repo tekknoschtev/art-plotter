@@ -3,6 +3,7 @@ import { createFbm3D, mulberry32 } from '../noise';
 import { buildField, type Basis } from './field';
 import { traceRoads, type Road } from './streets';
 import { blob, Mask, meanderLine } from './features';
+import type { CityMask } from './mask';
 
 export interface CitySettings {
   seed: number;
@@ -56,7 +57,7 @@ const WATER = 1;
 const PARK = 2;
 
 /** Places the features, builds the street-direction field and traces the roads. */
-export function layoutCity(p: CitySettings, drawable: Rect, minorWidth: number): CityLayout {
+export function layoutCity(p: CitySettings, drawable: Rect, minorWidth: number, shape: CityMask | null = null): CityLayout {
   const random = mulberry32(p.seed);
   const pad = 4;
   const bounds: Rect = { x0: drawable.x0 - pad, y0: drawable.y0 - pad, x1: drawable.x1 + pad, y1: drawable.y1 + pad };
@@ -80,6 +81,7 @@ export function layoutCity(p: CitySettings, drawable: Rect, minorWidth: number):
     for (let attempt = 0; attempt < 30; attempt++) {
       const [x, y] = randomPoint(0.12);
       if (distToRiver(x, y) < p.riverWidth / 2 + radius + 8) continue;
+      if (shape && shape.distance(x, y) < radius + 5) continue;
       if (taken.some((t) => Math.hypot(t.x - x, t.y - y) < t.r + radius + 15)) continue;
       taken.push({ x, y, r: radius });
       return [x, y];
@@ -118,7 +120,10 @@ export function layoutCity(p: CitySettings, drawable: Rect, minorWidth: number):
   const mask = new Mask(bounds, 1.5);
   if (river) mask.addBand(river, p.riverWidth / 2 + minorWidth, WATER);
   for (const park of parks) mask.addPolygon(park, PARK);
+  // Streets overshoot the city shape slightly so edge blocks are still bounded by streets.
+  const overshoot = p.minorSpacing;
   const blocked = (x: number, y: number, cls: number) => {
+    if (shape && shape.distance(x, y) < -overshoot) return true;
     const m = mask.get(x, y);
     if (m & WATER) return cls !== 0 || !p.bridges;
     if (m & PARK) return cls !== 0;
@@ -128,7 +133,14 @@ export function layoutCity(p: CitySettings, drawable: Rect, minorWidth: number):
   const roads = traceRoads(
     field,
     [{ spacing: p.majorSpacing }, { spacing: p.mainSpacing }, { spacing: p.minorSpacing }],
-    { bounds, step: Math.min(1.5, p.minorSpacing / 8), blocked, random },
+    {
+      bounds,
+      step: Math.min(1.5, p.minorSpacing / 8),
+      blocked,
+      random,
+      // A straight-ish crossing is about one river width; allow some slant.
+      water: river ? { test: (x, y) => (mask.get(x, y) & WATER) !== 0, maxRun: p.riverWidth * 1.8 } : undefined,
+    },
   );
 
   return { bounds, roads, river, rail, parks, parkPaths, plazas };

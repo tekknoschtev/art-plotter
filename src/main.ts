@@ -10,6 +10,7 @@ import { drawableRect, type Polyline } from './types';
 import { randomSeed } from './noise';
 import { terrainMissingImage, type TerrainParams } from './terrain/terrain';
 import { onImageChange, restoreImage } from './terrain/imageSource';
+import { generateFlights } from './overlay/flights';
 
 const MM_PER_IN = 25.4;
 const SIZE_PRESETS: Record<string, [number, number]> = {
@@ -27,6 +28,9 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const state = loadState();
 let paths: Polyline[] = [];
+/** Flight-line overlay paths (plot-ready), drawn over the pattern and exported separately. */
+let overlay: Polyline[] = [];
+const OVERLAY_COLOR = '#c2410c';
 
 // ---------- Controls ----------
 
@@ -116,6 +120,22 @@ function buildGeneratorUI() {
 }
 buildGeneratorUI();
 
+const flightsFolder = pane.addFolder({ title: 'Flight lines (overlay)', expanded: false });
+flightsFolder.addBinding(state.flights, 'enabled');
+flightsFolder.addBinding(state.flights, 'seed', { step: 1, min: 0 });
+flightsFolder.addButton({ title: 'Random routes' }).on('click', () => {
+  state.flights.seed = randomSeed();
+  pane.refresh();
+});
+flightsFolder.addBinding(state.flights, 'routes', { min: 1, max: 80, step: 1 });
+flightsFolder.addBinding(state.flights, 'hubs', { min: 0, max: 12, step: 1 });
+flightsFolder.addBinding(state.flights, 'curve', { min: 0, max: 1, step: 0.01 });
+flightsFolder.addBinding(state.flights, 'offPage', { label: 'off page', min: 0, max: 1, step: 0.01 });
+flightsFolder.addBinding(state.flights, 'arrowSpacing', { label: 'arrow spacing', min: 3, max: 100, step: 0.5 });
+flightsFolder.addBinding(state.flights, 'arrowSize', { label: 'arrow size', min: 0.5, max: 8, step: 0.1 });
+flightsFolder.addBinding(state.flights, 'endpoint', { options: { Dot: 'dot', Ring: 'ring', None: 'none' } });
+flightsFolder.addBinding(state.flights, 'markerSize', { label: 'marker size', min: 0.3, max: 6, step: 0.1 });
+
 const processFolder = pane.addFolder({ title: 'Processing', expanded: false });
 processFolder.addBinding(state.process, 'simplify', { label: 'simplify mm', min: 0, max: 2, step: 0.01 });
 processFolder.addBinding(state.process, 'minLength', { label: 'min length mm', min: 0, max: 20, step: 0.1 });
@@ -173,6 +193,7 @@ function update() {
   const gen = getGenerator(state.generatorId);
   const t0 = performance.now();
   paths = processPaths(gen.generate(currentParams(), state.canvas), state.canvas, state.process);
+  overlay = state.flights.enabled ? processPaths(generateFlights(state.flights, state.canvas), state.canvas, state.process) : [];
   const ms = performance.now() - t0;
   draw();
   updateStats(ms);
@@ -180,7 +201,7 @@ function update() {
 }
 
 function draw() {
-  renderPreview(previewEl, paths, state.canvas, { showTravel: state.showTravel });
+  renderPreview(previewEl, paths, state.canvas, { showTravel: state.showTravel, overlay, overlayColor: OVERLAY_COLOR });
 }
 
 function updateStats(ms: number) {
@@ -194,6 +215,7 @@ function updateStats(ms: number) {
     `<span>travel <b>${(pen.travelLength / 1000).toFixed(1)} m</b></span>`,
     `<span>pen ≈ <b>${formatDuration(pen.seconds)}</b></span>`,
     `<span>brush ≈ <b>${formatDuration(brush.seconds)}</b></span>`,
+    overlay.length ? `<span style="color:${OVERLAY_COLOR}">flights ≈ <b>${formatDuration(estimate(overlay, state.pen).seconds)}</b></span>` : '',
     `<span class="muted">${ms.toFixed(0)} ms</span>`,
   ].join('');
 
@@ -249,7 +271,36 @@ function exportGcode(label: 'Pen' | 'Brush', profile: ToolProfile) {
 
 $('export-pen').addEventListener('click', () => exportGcode('Pen', state.pen));
 $('export-brush').addEventListener('click', () => exportGcode('Brush', state.brush));
-$('export-svg').addEventListener('click', () => download(`${baseName()}.svg`, toSvg(paths, state.canvas), 'image/svg+xml'));
+$('export-flights').addEventListener('click', () => {
+  if (!overlay.length) {
+    alert('Turn on “Flight lines (overlay)” first.');
+    return;
+  }
+  const gcode = toGcode(overlay, {
+    profile: state.pen,
+    label: 'Flight lines (pen)',
+    startGcode: state.startGcode,
+    endGcode: state.endGcode,
+    comments: [
+      'Overlay: run after the main pattern, on the same zero.',
+      `Flight lines: ${JSON.stringify(state.flights)}`,
+    ],
+  });
+  download(`${baseName()}-flights-${state.flights.seed}-pen.gcode`, gcode, 'text/plain');
+});
+$('export-svg').addEventListener('click', () =>
+  download(
+    `${baseName()}.svg`,
+    toSvg(
+      [
+        { name: 'pattern', paths },
+        { name: 'flights', paths: overlay, color: OVERLAY_COLOR },
+      ],
+      state.canvas,
+    ),
+    'image/svg+xml',
+  ),
+);
 $('export-boundary').addEventListener('click', () =>
   download('boundary-check.gcode', boundaryGcode(drawableRect(state.canvas), state.pen), 'text/plain'),
 );

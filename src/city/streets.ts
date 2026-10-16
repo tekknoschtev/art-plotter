@@ -22,6 +22,11 @@ export interface TraceOptions {
   /** True where roads of class `cls` may not go (water, parks…). */
   blocked: (x: number, y: number, cls: number) => boolean;
   random: () => number;
+  /**
+   * Roads allowed into water (bridges) must cross it, not run along it: a
+   * street stops once it has been in water for longer than `maxRun` mm.
+   */
+  water?: { test: (x: number, y: number) => boolean; maxRun: number };
 }
 
 /** Uniform grid of points for fast "anything within r?" queries. */
@@ -179,6 +184,7 @@ function traceClass(field: DirectionField, cls: number, dsep: number, roads: Roa
     let prev: Point = [d0[0] * sign, d0[1] * sign];
     let p = seed;
     let length = 0;
+    let wet = 0;
     while (length < longest) {
       // RK4 along the direction field.
       const k1 = direction(p, family, prev);
@@ -199,6 +205,10 @@ function traceClass(field: DirectionField, cls: number, dsep: number, roads: Roa
       if (!inRect(bounds, next[0], next[1]) || blocked(next[0], next[1], cls)) break;
       if (tooClose(next[0], next[1], family, dtest)) break;
       length += step;
+      if (opts.water) {
+        wet = opts.water.test(next[0], next[1]) ? wet + step : 0;
+        if (wet > opts.water.maxRun) break;
+      }
       const s = sign * length;
       // Met an earlier stretch of this same street (not the bit just behind us)?
       let hitSelf: number | null = null;

@@ -52,6 +52,18 @@ and minor). Start from a **style** (Riverside, Old town, Planned grid, Étoiles)
 - **River** (streets run parallel near its banks; major roads cross on bridges), **Plazas** (avenues
   radiate from them), **Parks** (with footpaths), and **Railway**.
 - **Output:** *Blocks*, plain *Streets* (centrelines), or *Both*.
+- **Shape & edge:** give the city an organic outline instead of the canvas rectangle: a **blob**, a
+  **noise island** (coastline with bays and islets), or an **image silhouette** (dark = city; uses the
+  same *Load image…* as terrain). Edge styles: **Fade** (the city dissolves in patches across a fade
+  band), **Ragged** (whole blocks only) or **Crisp** (blocks cut and rounded along the outline).
+  **Draw outline** adds the shape as a coastline.
+
+## Flight lines
+
+**Flight lines (overlay)** draws straight lines or arcs with direction chevrons on top of any
+pattern. Routes can share **hubs** and some can run off the page. The overlay shows in orange in the
+preview and is exported on its own with **Flight lines G-code**, so you can plot it with a different
+pen after the main pattern (same zero point). The SVG export keeps pattern and flights as separate layers.
 
 ## Code layout
 

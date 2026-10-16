@@ -62,8 +62,12 @@ Generator → polylines (mm)
      canvas, round the corners (shrink, then grow back), drop tiny fragments, and add optional inner outlines.
    - Features: river with bridges, plazas/étoiles, parks with paths, railway.
    - Output: blocks, plain streets, or both.
-6. **Later.** Paint-well dipping, multiple layers or colours, combining patterns (masks), real map data
-   (OpenStreetMap), flight-line overlays, city-edge fade, inch units, and possibly sending G-code to the
+   - City shapes: blob, noise island or image silhouette masks, with fade, ragged or crisp edges and
+     an optional coastline outline.
+6. ✅ **Flight-line overlay.** Lines and arcs with direction chevrons and hub markers, drawn over any
+   pattern and exported as a separate G-code file for a second pen.
+7. **Later.** Paint-well dipping, multiple layers or colours, combining patterns (masks), real map data
+   (OpenStreetMap), inch units, and possibly sending G-code to the
    machine from the browser over USB (Web Serial).
 
 ## Notes

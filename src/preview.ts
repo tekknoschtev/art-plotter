@@ -3,6 +3,9 @@ import { drawableRect } from './types';
 
 export interface PreviewOptions {
   showTravel: boolean;
+  /** A second layer (e.g. flight lines), drawn on top in `overlayColor`. */
+  overlay?: Polyline[];
+  overlayColor?: string;
 }
 
 /** Draws the artwork to fit inside the canvas element, with the paper shown at true proportions. */
@@ -45,12 +48,19 @@ export function renderPreview(el: HTMLCanvasElement, paths: Polyline[], canvas: 
   ctx.lineCap = 'round';
   ctx.strokeStyle = '#1b1b1f';
   ctx.lineWidth = Math.max(0.4, px * 0.8);
-  ctx.beginPath();
-  for (const p of paths) {
-    ctx.moveTo(p[0][0], p[0][1]);
-    for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+  const strokePaths = (list: Polyline[]) => {
+    ctx.beginPath();
+    for (const p of list) {
+      ctx.moveTo(p[0][0], p[0][1]);
+      for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+    }
+    ctx.stroke();
+  };
+  strokePaths(paths);
+  if (opts.overlay?.length) {
+    ctx.strokeStyle = opts.overlayColor ?? '#c2410c';
+    strokePaths(opts.overlay);
   }
-  ctx.stroke();
 
   if (opts.showTravel) {
     ctx.strokeStyle = 'rgba(220, 50, 50, 0.6)';

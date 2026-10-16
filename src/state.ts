@@ -2,6 +2,7 @@ import type { CanvasSettings } from './types';
 import type { ToolProfile } from './output/gcode';
 import type { ProcessSettings } from './pipeline';
 import { generators } from './generators';
+import { flightDefaults, type FlightSettings } from './overlay/flights';
 
 export interface AppState {
   version: 1;
@@ -17,6 +18,8 @@ export interface AppState {
   startGcode: string;
   endGcode: string;
   showTravel: boolean;
+  /** Flight-line overlay, drawn over any pattern and exported as its own file. */
+  flights: FlightSettings;
 }
 
 const STORAGE_KEY = 'art-plotter-state-v1';
@@ -34,6 +37,7 @@ export function defaultState(): AppState {
     startGcode: '',
     endGcode: '',
     showTravel: false,
+    flights: flightDefaults(),
   };
 }
 

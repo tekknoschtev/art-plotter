@@ -52,6 +52,34 @@ describe('city generator', () => {
   });
 });
 
+describe('city shape masks', () => {
+  const small = { ...cityGenerator.defaults(), minorSpacing: 8, mainSpacing: 25, majorSpacing: 60, riverWidth: 10, fadeWidth: 20 };
+  const edgeOf = (b: [number, number][]) => b.some(([x, y]) => x <= drawable.x0 + 0.01 || x >= drawable.x1 - 0.01 || y <= drawable.y0 + 0.01 || y >= drawable.y1 - 0.01);
+
+  for (const edgeStyle of ['crisp', 'ragged', 'fade'] as const) {
+    it(`keeps a ${edgeStyle} blob city off the canvas border, with closed blocks`, () => {
+      const out = cityGenerator.generate({ ...small, maskShape: 'blob', maskSize: 0.7, edgeStyle }, canvas);
+      expect(out.length).toBeGreaterThan(10);
+      for (const b of out) {
+        expect(b[0]).toEqual(b[b.length - 1]);
+        expect(edgeOf(b)).toBe(false);
+      }
+    });
+  }
+
+  it('fade thins the edge: fewer blocks than ragged', () => {
+    const ragged = cityGenerator.generate({ ...small, maskShape: 'blob', edgeStyle: 'ragged', innerChance: 0 }, canvas);
+    const fade = cityGenerator.generate({ ...small, maskShape: 'blob', edgeStyle: 'fade', innerChance: 0 }, canvas);
+    expect(fade.length).toBeLessThan(ragged.length);
+  });
+
+  it('draws the outline around the city when asked', () => {
+    const p = { ...small, maskShape: 'island' as const, edgeStyle: 'crisp' as const, river: false };
+    const without = cityGenerator.generate(p, canvas).length;
+    expect(cityGenerator.generate({ ...p, maskOutline: true }, canvas).length).toBeGreaterThan(without);
+  });
+});
+
 describe('direction field', () => {
   it('follows a grid basis and radiates from a radial one', () => {
     const bounds = { x0: 0, y0: 0, x1: 100, y1: 100 };
